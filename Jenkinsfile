@@ -1,4 +1,5 @@
 #!groovy
+puppet.credentials 'pe-access-token'
 node('tse-control-repo') {
   sshagent (credentials: ['jenkins-seteam-ssh']) {
     withEnv(['PATH+EXTRA=/usr/local/bin']) {
@@ -10,7 +11,6 @@ node('tse-control-repo') {
             export PATH=$PATH:$HOME/.rbenv/bin
             rbenv global 2.3.1
             eval "$(rbenv init -)"
-            rm -f Gemfile.lock
             bundle install
           ''')
         }
@@ -64,51 +64,26 @@ node('tse-control-repo') {
 }
 
 stage('Run Spec Tests') {
-  parallel(
-    'linux::profile::spec': {
-      runSpecTests('linux')
-    },
-    'windows::profile::spec': {
-      runSpecTests('windows')
-    }
-  )
+  sleep 10
+//  node('tse-slave-linux') {
+//    sshagent (credentials: ['jenkins-seteam-ssh']) {
+//      checkout scm
+//      withEnv(['PATH+EXTRA=/usr/local/bin']) {
+//        ansiColor('xterm') {
+//          sh(script: '''
+//            export PATH=$PATH:$HOME/.rbenv/bin:$HOME/.rbenv/shims
+//            echo $PATH
+//            rbenv global 2.3.1
+//            gem install bundle
+//            bundle install
+//            bundle exec rake spec
+//          ''')
+//        }
+//      }
+//    }
+//  }
 }
 
-
-// functions
-def linux(){
-  withEnv(['PATH+EXTRA=/usr/local/bin']) {
-    ansiColor('xterm') {
-      sh(script: '''
-        export PATH=$PATH:$HOME/.rbenv/bin:$HOME/.rbenv/shims
-        echo $PATH
-        rbenv global 2.3.1
-        gem install bundle
-        rm -f Gemfile.lock
-        bundle install
-        bundle exec rake spec
-      ''')
-    }
-  }
-}
-
-def windows(){
-  withEnv(['MODULE_WORKING_DIR=C:/tmp']) {
-    ansiColor('xterm') {
-      sh(script: '''
-        rm -f Gemfile.lock
-        bundle install
-        bundle exec rake spec
-      ''')
-    }
-  }
-}
-
-def runSpecTests(def platform){
-  node('tse-slave-' + platform) {
-    sshagent (credentials: ['jenkins-seteam-ssh']) {
-      checkout scm
-      "$platform"()
-    }
-  }
+stage("Promote To Environment"){
+  puppet.codeDeploy env.BRANCH_NAME
 }
