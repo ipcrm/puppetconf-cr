@@ -85,5 +85,9 @@ stage('Run Spec Tests') {
 }
 
 stage("Promote To Environment"){
-  puppet.codeDeploy env.BRANCH_NAME
+  if (env.BRANCH_NAME == 'production'){
+    puppet.codeDeploy env.BRANCH_NAME
+  } else {
+    echo 'Skipping non-Prod deploy'
+  }
 }
